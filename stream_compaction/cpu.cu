@@ -20,6 +20,13 @@ namespace StreamCompaction {
         void scan(int n, int *odata, const int *idata) {
 	        timer().startCpuTimer();
             // TODO
+			// Serial Scan: Exclusive
+			int acc = 0;
+			for (int i = 0; i < n; i++)
+			{
+				odata[i] = acc;
+				acc = acc + idata[i];			
+			}
 	        timer().endCpuTimer();
         }
 
