@@ -160,9 +160,9 @@ namespace StreamCompaction {
 			int* dev_Out = NULL;
 			int* dev_Bool = NULL;
 			int* dev_Address = NULL;
-			int* hostIn = new int[temp];
-			int* hostTemp = new int[temp];
-			int* hostTempBool = new int[temp];
+			//int* hostIn = new int[temp];
+			//int* hostTemp = new int[temp];
+			//int* hostTempBool = new int[temp];
 			cudaMalloc((void**)&dev_In, temp * sizeof(int));
 			checkCUDAError("compact: malloc dev_In failed!");
 			cudaMalloc((void**)&dev_Out, temp * sizeof(int));
@@ -174,48 +174,48 @@ namespace StreamCompaction {
 
 			cudaMemcpy(dev_In, idata, temp * sizeof(int), cudaMemcpyHostToDevice);
 			checkCUDAError("compact: memcpy from idata to dev_In failed!");
-			cudaMemcpy(hostIn, dev_In, temp * sizeof(int), cudaMemcpyDeviceToHost);
-			checkCUDAError("compact: memcoy from dev_In to hostIn failed!");
-			std::cout << std::endl;
-			std::cout << "my dev_In(idata): " << std::endl;
-			for (int i = 0; i < temp; ++i)
-			{
-				std::cout << hostIn[i] << " ";
-			}
-			std::cout << std::endl;
+			//cudaMemcpy(hostIn, dev_In, temp * sizeof(int), cudaMemcpyDeviceToHost);
+			//checkCUDAError("compact: memcoy from dev_In to hostIn failed!");
+			//std::cout << std::endl;
+			//std::cout << "my dev_In(idata): " << std::endl;
+			//for (int i = 0; i < temp; ++i)
+			//{
+			//	std::cout << hostIn[i] << " ";
+			//}
+			//std::cout << std::endl;
 
 
 			kernelPredicate << < fullBlocksPerGrid, blockSize >> > (temp, dev_Bool, dev_In);
-			cudaMemcpy(hostTemp, dev_Bool, temp * sizeof(int), cudaMemcpyDeviceToHost);
+			//cudaMemcpy(hostTemp, dev_Bool, temp * sizeof(int), cudaMemcpyDeviceToHost);
 
 			cudaMemcpy(dev_Address, dev_Bool, temp * sizeof(int), cudaMemcpyDeviceToDevice);
-			checkCUDAError("compact: memcoy from dev_Bool to hostTemp failed!");
-			std::cout << std::endl;
-			std::cout << "my dev_Bool(00011111): " << std::endl;
-			for (int i = 0; i < temp; ++i)
-			{
-				std::cout << hostTemp[i] << " ";
-			}
-			std::cout << std::endl;
+			//checkCUDAError("compact: memcoy from dev_Bool to hostTemp failed!");
+			//std::cout << std::endl;
+			//std::cout << "my dev_Bool(00011111): " << std::endl;
+			//for (int i = 0; i < temp; ++i)
+			//{
+			//	std::cout << hostTemp[i] << " ";
+			//}
+			//std::cout << std::endl;
 
 
 			//cudaMemcpy(host_Bool, dev_Bool, temp * sizeof(int), cudaMemcpyDeviceToHost);
 			myScan(n, temp, dev_Address);
-			cudaMemcpy(hostTempBool, dev_Bool, temp * sizeof(int), cudaMemcpyDeviceToHost);
-			checkCUDAError("compact: memcoy from dev_Bool to hostTempBool failed!");
+			//cudaMemcpy(hostTempBool, dev_Bool, temp * sizeof(int), cudaMemcpyDeviceToHost);
+			//checkCUDAError("compact: memcoy from dev_Bool to hostTempBool failed!");
 
-			std::cout << std::endl;
-			std::cout << "my dev_Bool(address): " << std::endl;
-			for (int i = 0; i < temp; ++i)
-			{
-				std::cout << hostTempBool[i] << " ";
-			}
-			std::cout << std::endl;
+			//std::cout << std::endl;
+			//std::cout << "my dev_Bool(address): " << std::endl;
+			//for (int i = 0; i < temp; ++i)
+			//{
+			//	std::cout << hostTempBool[i] << " ";
+			//}
+			//std::cout << std::endl;
 			//scan(temp, host_Out_Address, host_Bool);
 			//cudaMemcpy(dev_Address, host_Out_Address, temp * sizeof(int), cudaMemcpyHostToDevice);
 			//checkCUDAError("compact: memcoy from host_Out_Address to dev_Address failed!");
 
-			kernelScatter << <fullBlocksPerGrid, blockSize >> > (temp, dev_Out, dev_Bool, dev_Address, dev_In);
+			kernelScatter << <fullBlocksPerGrid, blockSize >> > (n, dev_Out, dev_Bool, dev_Address, dev_In);
 			
 			cudaMemcpy(odata, dev_Out, temp * sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -224,23 +224,23 @@ namespace StreamCompaction {
 			cudaFree(dev_Bool);
 			cudaFree(dev_Address);
 
-			delete[] hostTempBool;
-			delete[] hostTemp;
-			delete[] hostIn;
-			std::cout << std::endl;
-			std::cout << "my odata: " << std::endl;
-			for (int i = 0; i < temp; ++i)
-			{
-				std::cout << odata[i] << " ";
-			}
+			//delete[] hostTempBool;
+			//delete[] hostTemp;
+			//delete[] hostIn;
+			//std::cout << std::endl;
+			//std::cout << "my odata: " << std::endl;
+			//for (int i = 0; i < temp; ++i)
+			//{
+			//	std::cout << odata[i] << " ";
+			//}
 
-			
+			//
 
-			std::cout << std::endl;
+			//std::cout << std::endl;
 
 
 			int flag = 0;
-			for (int i = 0; i < temp; ++i)
+			for (int i = 0; i < n; ++i)
 			{
 				if (odata[i] != 0)
 				{
