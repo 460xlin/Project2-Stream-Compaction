@@ -61,7 +61,7 @@ namespace StreamCompaction {
         int compactWithScan(int n, int *odata, const int *idata) {
 	        timer().startCpuTimer();
 	        // TODO
-			// predictate
+			// predicate
 			int acc = 0;
 			int* tempdata = new int[n];
 			for (int i = 0; i < n; ++i)

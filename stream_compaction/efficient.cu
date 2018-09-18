@@ -12,25 +12,47 @@ namespace StreamCompaction {
             return timer;
         }
 
-
-		__global__ void kernelScanReduce(int n, int d, int* odata, int* idata)
+		__global__ void kernelScanReduce(int n, int d, int* idata)
 		{
 			int thID = threadIdx.x + blockDim.x * blockIdx.x;
 			if (thID >= n) return;
 			int temp = 1 << d;
 			int temp2 = 1 << (d - 1);
-			
 			if ((thID % temp) == 0)
 			{
-				odata[thID + temp - 1] = idata[thID + temp2 - 1] + idata[thID + temp - 1];
-			}
-			else
-			{
-				odata[thID] = idata[thID];
+				idata[thID + temp - 1] = idata[thID + temp2 - 1] + idata[thID + temp - 1];
 			}
 		}
+		// two array to get result
+		//__global__ void kernelScanReduce(int n, int d, int* odata, int* idata)
+		//{
+		//	int thID = threadIdx.x + blockDim.x * blockIdx.x;
+		//	if (thID >= n) return;
+		//	int temp = 1 << d;
+		//	int temp2 = 1 << (d - 1);
+		//	odata[thID] = idata[thID];
+		//	if ((thID % temp) == 0)
+		//	{
+		//		odata[thID + temp - 1] = idata[thID + temp2 - 1] + idata[thID + temp - 1];
+		//	}
+		//}
+		//__global__ void kernelScanDownSweep(int n, int d, int* odata, int* idata)
+		//{
+ 	//		int thID = threadIdx.x + blockDim.x * blockIdx.x;
+		//	if (thID >= n) return;
+		//	int tempdp1 = 1 << (d + 1);
+		//	int tempd = 1 << d;
+		//	odata[thID] = idata[thID];
+		//	if ((thID % tempdp1) == 0)
+		//	{
+		//		int t = idata[thID + tempd - 1];
+		//		odata[thID + tempd - 1] = idata[thID + tempdp1 - 1];
+		//		odata[thID + tempdp1 - 1] = t + idata[thID + tempdp1 - 1];
+		//	}
+		//}
 
-		__global__ void kernelScanDownSweep(int n, int d, int* odata, int* idata)
+
+		__global__ void kernelScanDownSweep(int n, int d, int* idata)
 		{
 			int thID = threadIdx.x + blockDim.x * blockIdx.x;
 			if (thID >= n) return;
@@ -39,63 +61,55 @@ namespace StreamCompaction {
 			if ((thID % tempdp1) == 0)
 			{
 				int t = idata[thID + tempd - 1];
-				odata[thID + tempd - 1] = idata[thID + tempdp1 - 1];
-				odata[thID + tempdp1 - 1] = t + idata[thID + tempdp1 - 1];
+				idata[thID + tempd - 1] = idata[thID + tempdp1 - 1];
+				idata[thID + tempdp1 - 1] = t + idata[thID + tempdp1 - 1];
+			}
+		}
 
-			}
-			else
-			{
-				odata[thID] = idata[thID];
-			}
+		__global__ void kernelChangeN1(int *arr, int index, int identity)
+		{
+				arr[index] = identity;			
 		}
         /**
          * Performs prefix-sum (aka scan) on idata, storing the result into odata.
          */
+
+		void myScan(int n, int temp, int* idata)
+		{
+			dim3 fullBlocksPerGrid((temp + blockSize - 1) / blockSize);
+			int myIdentity = 0;
+			for (int d = 1; d <= ilog2ceil(n); ++d)
+			{
+				kernelScanReduce << <fullBlocksPerGrid, blockSize >> > (temp, d, idata);
+			}
+
+			kernelChangeN1 << < 1, 1 >> > (idata, temp - 1, myIdentity);
+
+			for (int d = ilog2ceil(n) - 1; d >= 0; --d)
+			{
+				kernelScanDownSweep << <fullBlocksPerGrid, blockSize >> > (temp, d, idata);
+			}
+		}
         void scan(int n, int *odata, const int *idata) {
             timer().startGpuTimer();
             // TODO
 			int temp = 1 << ilog2ceil(n);
-			std::cout << "my temp number is " << temp << std::endl;
-			std::cout << "my ilog2ceil(n) is " << ilog2ceil(n) << std::endl;
-			std::cout << "my n is " << n << std::endl;
-			int myIdentity = 0;
 
 			dim3 fullBlocksPerGrid((temp + blockSize - 1) / blockSize);
 			int* dev_In = NULL;
 			int* dev_Out = NULL;
-
 			cudaMalloc((void**)&dev_In, temp * sizeof(int));
 			checkCUDAError("Malloc dev_In failed!");
 			cudaMalloc((void**)&dev_Out, temp * sizeof(int));
 			checkCUDAError("Malloc dev_Out failed!");
 			cudaMemcpy(dev_In, idata, temp * sizeof(int), cudaMemcpyHostToDevice);
 			checkCUDAError("Memcpy from idata to dev_In failed!");
-
-			std::cout << "still works before kernel scan reduce" << std::endl;
-			for (int d = 1; d <= ilog2ceil(n); ++d)
-			{
-				std::cout << "d is " << d << std::endl;
-				kernelScanReduce << <fullBlocksPerGrid, blockSize >> > (temp, d, dev_Out, dev_In);
-				std::swap(dev_Out, dev_In);
-
-			}
+			myScan(n, temp, dev_In);
+			
 			std::swap(dev_Out, dev_In);
-			dev_Out[n - 1] = myIdentity;
-			//
-			//for (int d = ilog2ceil(n) - 1; d >= 0; --d)
-			//{
-			//	kernelScanDownSweep << <fullBlocksPerGrid, blockSize >> > (temp, d, dev_Out, dev_In);
-			//	std::swap(dev_Out, dev_In);
-			//}
-			//
-			//std::swap(dev_Out, dev_In);
 			cudaMemcpy(odata, dev_Out, temp * sizeof(int), cudaMemcpyDeviceToHost);
 			checkCUDAError("Memcoy from dev_Out to odata failed!");
 
-			for (int i = 0; i < temp; ++i)
-			{
-				std::cout << odata[i] << " ";
-			}
             timer().endGpuTimer();
 
 			cudaFree(dev_In);
@@ -111,11 +125,134 @@ namespace StreamCompaction {
          * @param idata  The array of elements to compact.
          * @returns      The number of elements remaining after compaction.
          */
+
+
+		__global__ void kernelPredicate(int n, int* odata, const int* idata)
+		{
+			int thID = threadIdx.x + blockDim.x * blockIdx.x;
+			if (thID >= n) return;
+			if (idata[thID] == 0)
+			{
+				odata[thID] = 0;
+			}
+			else
+			{
+				odata[thID] = 1;
+			}
+
+		}
+		__global__ void kernelScatter(int n, int* odata, int* myBool ,int* address, int* idata)
+		{
+			int thID = threadIdx.x + blockDim.x * blockIdx.x;
+			if (thID >= n) return;
+			if (myBool[thID] == 1)
+			{
+				odata[address[thID]] = idata[thID];
+			}
+
+		}
         int compact(int n, int *odata, const int *idata) {
             timer().startGpuTimer();
             // TODO
-            timer().endGpuTimer();
-            return -1;
+			int temp = 1 << ilog2ceil(n);
+			dim3 fullBlocksPerGrid((temp + blockSize - 1) / blockSize);
+			int* dev_In = NULL;
+			int* dev_Out = NULL;
+			int* dev_Bool = NULL;
+			int* dev_Address = NULL;
+			int* hostIn = new int[temp];
+			int* hostTemp = new int[temp];
+			int* hostTempBool = new int[temp];
+			cudaMalloc((void**)&dev_In, temp * sizeof(int));
+			checkCUDAError("compact: malloc dev_In failed!");
+			cudaMalloc((void**)&dev_Out, temp * sizeof(int));
+			checkCUDAError("compact: malloc dev_Out failed!");
+			cudaMalloc((void**)&dev_Bool, temp * sizeof(int));
+			checkCUDAError("compact: malloc dev_Bool failed!");
+			cudaMalloc((void**)&dev_Address, temp * sizeof(int));
+			checkCUDAError("compact: malloc dev_Address failed!");
+
+			cudaMemcpy(dev_In, idata, temp * sizeof(int), cudaMemcpyHostToDevice);
+			checkCUDAError("compact: memcpy from idata to dev_In failed!");
+			cudaMemcpy(hostIn, dev_In, temp * sizeof(int), cudaMemcpyDeviceToHost);
+			checkCUDAError("compact: memcoy from dev_In to hostIn failed!");
+			std::cout << std::endl;
+			std::cout << "my dev_In(idata): " << std::endl;
+			for (int i = 0; i < temp; ++i)
+			{
+				std::cout << hostIn[i] << " ";
+			}
+			std::cout << std::endl;
+
+
+			kernelPredicate << < fullBlocksPerGrid, blockSize >> > (temp, dev_Bool, dev_In);
+			cudaMemcpy(hostTemp, dev_Bool, temp * sizeof(int), cudaMemcpyDeviceToHost);
+
+			cudaMemcpy(dev_Address, dev_Bool, temp * sizeof(int), cudaMemcpyDeviceToDevice);
+			checkCUDAError("compact: memcoy from dev_Bool to hostTemp failed!");
+			std::cout << std::endl;
+			std::cout << "my dev_Bool(00011111): " << std::endl;
+			for (int i = 0; i < temp; ++i)
+			{
+				std::cout << hostTemp[i] << " ";
+			}
+			std::cout << std::endl;
+
+
+			//cudaMemcpy(host_Bool, dev_Bool, temp * sizeof(int), cudaMemcpyDeviceToHost);
+			myScan(n, temp, dev_Address);
+			cudaMemcpy(hostTempBool, dev_Bool, temp * sizeof(int), cudaMemcpyDeviceToHost);
+			checkCUDAError("compact: memcoy from dev_Bool to hostTempBool failed!");
+
+			std::cout << std::endl;
+			std::cout << "my dev_Bool(address): " << std::endl;
+			for (int i = 0; i < temp; ++i)
+			{
+				std::cout << hostTempBool[i] << " ";
+			}
+			std::cout << std::endl;
+			//scan(temp, host_Out_Address, host_Bool);
+			//cudaMemcpy(dev_Address, host_Out_Address, temp * sizeof(int), cudaMemcpyHostToDevice);
+			//checkCUDAError("compact: memcoy from host_Out_Address to dev_Address failed!");
+
+			kernelScatter << <fullBlocksPerGrid, blockSize >> > (temp, dev_Out, dev_Bool, dev_Address, dev_In);
+			
+			cudaMemcpy(odata, dev_Out, temp * sizeof(int), cudaMemcpyDeviceToHost);
+
+			cudaFree(dev_In);
+			cudaFree(dev_Out);
+			cudaFree(dev_Bool);
+			cudaFree(dev_Address);
+
+			delete[] hostTempBool;
+			delete[] hostTemp;
+			delete[] hostIn;
+			std::cout << std::endl;
+			std::cout << "my odata: " << std::endl;
+			for (int i = 0; i < temp; ++i)
+			{
+				std::cout << odata[i] << " ";
+			}
+
+			
+
+			std::cout << std::endl;
+
+
+			int flag = 0;
+			for (int i = 0; i < temp; ++i)
+			{
+				if (odata[i] != 0)
+				{
+					flag++;
+				}
+				else
+				{
+					break;
+				}
+			}
+			timer().endGpuTimer();
+			return flag;
         }
     }
 }
