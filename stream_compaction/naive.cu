@@ -28,7 +28,6 @@ namespace StreamCompaction {
 			if (thID >= temp)
 			{
 				odata[thID] = idata[thID - temp] + idata[thID];
-
 			}
 			else
 			{
@@ -61,10 +60,10 @@ namespace StreamCompaction {
 			odata[0] = 0;
 			cudaMemcpy(odata + 1, dev_tempOut, (n - 1) * sizeof(int), cudaMemcpyDeviceToHost);
 			checkCUDAError("Memory copy from device to host failed!");
-			for (int i = 0; i < n; ++i)
-			{
-				std::cout << odata[i] << " ";
-			}
+			//for (int i = 0; i < n; ++i)
+			//{
+			//	std::cout << odata[i] << " ";
+			//}
             timer().endGpuTimer();
 
 			cudaFree(dev_tempIn);
