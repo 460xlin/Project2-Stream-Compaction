@@ -31,3 +31,5 @@ CUDA Stream Compaction
 ![](img/as256compact.png)
 ![](img/as512compact.png)
 ![](img/as1024compact.png)
+
+### Result
