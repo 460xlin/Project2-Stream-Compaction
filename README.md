@@ -3,12 +3,31 @@ CUDA Stream Compaction
 
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 2**
 
-* (TODO) YOUR NAME HERE
-  * (TODO) [LinkedIn](), [personal website](), [twitter](), etc.
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
+* Xinyu Lin
+[Linkedin](https://www.linkedin.com/in/xinyu-lin-138352125/)
+* Tested on: Windows 10, Intel64 Family 6 Model 94 Stepping 3 GenuineIntel ~2600 Mhz, 16GB, GTX960M(Private Computer)
 
-### (TODO: Your README)
+### Features
 
-Include analysis, etc. (Remember, this is public, so don't put
-anything here that you don't want to share with the world.)
+* CPU Scan & Stream Compaction
+* Naive GPU Scan Algorithm
+* Work-Efficient GPU Scan
+* Work-Efficient GPU Stream Compaction
+* Thrust Implementation
 
+### Performance Analysis
+* BlockSize over Scan methods(ArraySize: 256)
+![](img/bsscan.png)
+
+* BlockSize over Compact methods(ArraySize: 256)
+![](img/bscompact.png)
+
+* ArraySize over Scan methods(BlockSize: 512)
+![](img/as256scan.png)
+![](img/as512scan'.png)
+![](img/as1024scan.png)
+
+* ArraySize over Compact methods(BlockSize: 512)
+![](img/as256compact.png)
+![](img/as512compact.png)
+![](img/as1024compact.png)
