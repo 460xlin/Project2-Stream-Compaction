@@ -5,7 +5,7 @@ CUDA Stream Compaction
 
 * Xinyu Lin
 [Linkedin](https://www.linkedin.com/in/xinyu-lin-138352125/)
-* Tested on: Windows 10, Intel64 Family 6 Model 94 Stepping 3 GenuineIntel ~2600 Mhz, 16GB, GTX960M(Private Computer)
+* Tested on: Windows 10, Intel(R) Core(TM) i7-6700HQ CPU@2.60GHz, 16GB, GTX960M(Private Computer)
 
 ### Features
 
